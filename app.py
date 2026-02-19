@@ -1,10 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-from power_automate import PowerAutomateBackend
-
-# Initialize Backend
-backend = PowerAutomateBackend()
+from excel_storage import ExcelStorage
+import os
 
 # Page Configuration
 st.set_page_config(
@@ -13,7 +11,12 @@ st.set_page_config(
     layout="wide",
 )
 
-# Custom Styling (Inspired by React App)
+# Initialize Storage
+# You can change this path to your SharePoint synced folder
+db_path = st.sidebar.text_input("Caminho do Banco de Dados (Excel)", value="geomato_database.xlsx")
+storage = ExcelStorage(db_path)
+
+# Custom Styling
 st.markdown("""
     <style>
     .main {
@@ -24,33 +27,45 @@ st.markdown("""
         color: white;
         border-radius: 6px;
         border: none;
+        width: 100%;
     }
     .stButton>button:hover {
         background-color: #006b35;
     }
-    .header-style {
-        color: #008542;
-        font-weight: bold;
+    .op-card {
+        background: white;
+        padding: 20px;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+        border-left: 5px solid #008542;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Initialize Session State
-if 'operations' not in st.session_state:
-    st.session_state.operations = []
-
 # Sidebar Navigation
 st.sidebar.title("Geomato")
-page = st.sidebar.selectbox("Navegação", ["Dashboard", "Nova Operação", "Configurações MS Lists"])
+page = st.sidebar.selectbox("Navegação", ["Dashboard", "Nova Operação"])
 
 if page == "Dashboard":
     st.title("🏗️ Painel de Operações")
     
-    if not st.session_state.operations:
+    # Reload data from Excel
+    operations = storage.load_operations()
+    
+    if not operations:
         st.info("Nenhuma operação registrada ainda. Vá para 'Nova Operação' para começar.")
     else:
-        for op in st.session_state.operations:
-            with st.expander(f"{op['title']} - {op['embarcacao']}"):
+        # Search/Filter
+        search = st.text_input("🔍 Buscar por título ou embarcação", "")
+        
+        filtered_ops = [
+            op for op in operations 
+            if search.lower() in str(op['title']).lower() or search.lower() in str(op['embarcacao']).lower()
+        ]
+
+        for op in filtered_ops:
+            with st.expander(f"📦 {op['title']} | {op['embarcacao']} | {op['dataCarregamento']}"):
                 col1, col2 = st.columns(2)
                 with col1:
                     st.write(f"**Data:** {op['dataCarregamento']}")
@@ -61,11 +76,18 @@ if page == "Dashboard":
                     st.write(f"**Apoio:** {op['apoioRespo']}")
                 
                 st.write("**Observações:**")
-                st.write(op['obsEmbarque'])
+                st.info(op['obsEmbarque'] if op['obsEmbarque'] else "Sem observações.")
                 
                 if op['materials']:
-                    st.write("**Materiais:**")
-                    st.dataframe(pd.DataFrame(op['materials']))
+                    st.write("**Lista de Materiais:**")
+                    # Clean up materials for display (remove internal ID)
+                    display_mats = pd.DataFrame(op['materials']).drop(columns=['operation_id'], errors='ignore')
+                    st.table(display_mats)
+                
+                if st.button(f"Excluir Operação {op['id']}", key=f"del_{op['id']}"):
+                    storage.delete_operation(op['id'])
+                    st.toast(f"Operação {op['id']} excluída!")
+                    st.rerun()
 
 elif page == "Nova Operação":
     st.title("🆕 Nova Operação")
@@ -86,19 +108,28 @@ elif page == "Nova Operação":
             
         obs_embarque = st.text_area("Observações de Embarque")
         
-        st.subheader("Materiais")
-        # For the prototype, we'll use a data editor for materials
-        materials_df = pd.DataFrame(columns=["Material", "Quantidade", "Armazenamento", "Objetivo"])
-        edited_materials = st.data_editor(materials_df, num_rows="dynamic")
+        st.subheader("📋 Materiais")
+        # Initialize an empty template for materials
+        template_df = pd.DataFrame(columns=["material", "quantidade", "armazenamento", "objetivo"])
+        edited_materials = st.data_editor(
+            template_df, 
+            num_rows="dynamic", 
+            use_container_width=True,
+            column_config={
+                "material": st.column_config.TextColumn("Material"),
+                "quantidade": st.column_config.NumberColumn("Qtd"),
+                "armazenamento": st.column_config.TextColumn("Armazenamento"),
+                "objetivo": st.column_config.TextColumn("Objetivo")
+            }
+        )
         
-        submitted = st.form_submit_button("Criar Operação")
+        submitted = st.form_submit_button("Gerar Plano de Operação")
         
         if submitted:
             if not title:
                 st.error("O título é obrigatório!")
             else:
-                new_op = {
-                    "id": len(st.session_state.operations) + 1,
+                op_data = {
                     "title": title,
                     "embarcacao": embarcacao,
                     "dataCarregamento": str(data_carregamento),
@@ -106,27 +137,12 @@ elif page == "Nova Operação":
                     "coroaBB": coroa_bb,
                     "stoRespo": sto_respo,
                     "apoioRespo": apoio_respo,
-                    "obsEmbarque": obs_embarque,
-                    "materials": edited_materials.to_dict('records')
+                    "obsEmbarque": obs_embarque
                 }
-                st.session_state.operations.append(new_op)
                 
-                # Send to Power Automate
-                with st.spinner("Enviando dados para o SharePoint..."):
-                    # Use URL from session state if available, otherwise fallback to .env
-                    url = st.session_state.get('webhook_url')
-                    success = backend.send_operation(new_op, url=url)
-                    if success:
-                        st.success("Operação criada e salva no SharePoint com sucesso!")
-                    else:
-                        st.error("Operação criada localmente, mas falhou ao enviar para o SharePoint. Verifique a URL do Power Automate.")
-
-elif page == "Configurações MS Lists":
-    st.title("⚙️ Configuração Power Automate")
-    st.info("Insira a URL do Webhook gerada no Power Automate.")
-    
-    webhook_url = st.text_input("Power Automate Webhook URL", type="password", help="A URL que começa com https://prod-....")
-    
-    if st.button("Salvar URL"):
-        st.session_state.webhook_url = webhook_url
-        st.success("URL salva na sessão!")
+                # Convert materials to list of dicts and clean up empty rows
+                mats_list = edited_materials.dropna(how='all').to_dict('records')
+                
+                new_id = storage.save_operation(op_data, mats_list)
+                st.success(f"Operação #{new_id} salva com sucesso no Excel!")
+                st.balloons()

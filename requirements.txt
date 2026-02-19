@@ -1,6 +1,6 @@
 streamlit
-requests
-python-dotenv
 pandas
+openpyxl
+python-dotenv
 plotly
 lucide-icons
