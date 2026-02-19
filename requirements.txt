@@ -1,0 +1,6 @@
+streamlit
+O365
+python-dotenv
+pandas
+plotly
+lucide-icons
