@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from power_automate import PowerAutomateBackend
+
+# Initialize Backend
+backend = PowerAutomateBackend()
 
 # Page Configuration
 st.set_page_config(
@@ -106,17 +110,23 @@ elif page == "Nova Operação":
                     "materials": edited_materials.to_dict('records')
                 }
                 st.session_state.operations.append(new_op)
-                st.success("Operação criada com sucesso!")
+                
+                # Send to Power Automate
+                with st.spinner("Enviando dados para o SharePoint..."):
+                    # Use URL from session state if available, otherwise fallback to .env
+                    url = st.session_state.get('webhook_url')
+                    success = backend.send_operation(new_op, url=url)
+                    if success:
+                        st.success("Operação criada e salva no SharePoint com sucesso!")
+                    else:
+                        st.error("Operação criada localmente, mas falhou ao enviar para o SharePoint. Verifique a URL do Power Automate.")
 
 elif page == "Configurações MS Lists":
-    st.title("⚙️ Configuração Microsoft Lists")
-    st.info("Insira as credenciais do Azure AD para conectar ao SharePoint.")
+    st.title("⚙️ Configuração Power Automate")
+    st.info("Insira a URL do Webhook gerada no Power Automate.")
     
-    client_id = st.text_input("Client ID", type="password")
-    client_secret = st.text_input("Client Secret", type="password")
-    tenant_id = st.text_input("Tenant ID", type="password")
-    sharepoint_site = st.text_input("SharePoint Site URL")
+    webhook_url = st.text_input("Power Automate Webhook URL", type="password", help="A URL que começa com https://prod-....")
     
-    if st.button("Salvar e Testar Conexão"):
-        # This will be implemented in the next step
-        st.warning("Integração MS Graph em desenvolvimento...")
+    if st.button("Salvar URL"):
+        st.session_state.webhook_url = webhook_url
+        st.success("URL salva na sessão!")
