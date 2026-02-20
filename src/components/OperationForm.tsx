@@ -118,11 +118,7 @@ const OperationForm: React.FC<OperationFormProps> = ({ onAddOperation }) => {
         e.preventDefault();
         if (!formData.title) return;
 
-        onAddOperation({
-            ...formData,
-            id: Date.now(),
-            materials: []
-        } as Operation);
+        onAddOperation(formData as any);
 
         setFormData({
             title: '',

@@ -1,70 +1,89 @@
-# Getting Started with Create React App
+# Geomato - Operations Dashboard
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern web application for managing maritime operations, built with React and PostgreSQL.
 
-## Available Scripts
+## 🚀 Features
 
-In the project directory, you can run:
+- **Operations Tracking:** Manage titles, vessels, and loading dates.
+- **Material Inventory:** Detailed listing of materials tied to specific operations.
+- **Persistent Storage:** Fully integrated with PostgreSQL database.
+- **Excel Export:** Generate operation reports in `.xlsx` format.
+- **Modern UI:** Clean, responsive design with interactive forms.
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🛠️ Project Structure
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- `/src`: React frontend (TypeScript)
+- `/server`: Node.js/Express backend (TypeScript)
+- `server/schema.sql`: Database schema definition
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## 🚦 Getting Started
 
-### `npm run build`
+### 1. Database Setup
+Ensure you have **PostgreSQL** installed and running.
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+1. Create a new database (e.g., `geomato_db`).
+2. Run the SQL script located at `server/schema.sql` to create the required tables:
+   ```bash
+   psql -U your_username -d geomato_db -f server/schema.sql
+   ```
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+### 2. Backend Configuration
+1. Navigate to the server directory:
+   ```bash
+   cd server
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure environment variables:
+   - Create a `.env` file based on `.env.example`.
+   - Set your `DATABASE_URL`:
+     ```env
+     DATABASE_URL=postgres://your_user:your_password@localhost:5432/geomato_db
+     PORT=3001
+     ```
+4. Start the server (development mode):
+   ```bash
+   npm run dev
+   ```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 3. Frontend Configuration
+1. Return to the root directory:
+   ```bash
+   cd ..
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Configure environment variables (optional):
+   - Create a `.env` file based on `.env.example`.
+   - `REACT_APP_API_URL` defaults to `http://localhost:3001/api`.
+4. Start the React app:
+   ```bash
+   npm start
+   ```
 
-### `npm run eject`
+---
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## 📦 Available Scripts
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+### Root Directory
+- `npm start`: Runs the app in development mode.
+- `npm run build`: Builds the app for production.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+### `/server` Directory
+- `npm run dev`: Runs the backend with `ts-node` for development.
+- `npm run build`: Compiles TypeScript to JavaScript.
+- `npm start`: Runs the compiled backend.
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+---
 
-## Learn More
+## 📄 License
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This project is private and intended for internal use.

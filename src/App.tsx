@@ -1,10 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import styled from 'styled-components';
-import { Download, Ship } from 'lucide-react';
-import OperationForm from './components/OperationForm';
-import OperationList from './components/OperationList';
-import { exportToExcel } from './utils/excelExport';
 import { Operation, Material } from './types';
+
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 const AppContainer = styled.div`
   min-height: 100vh;
@@ -81,75 +77,132 @@ const SectionTitle = styled.h2`
 `;
 
 const App: React.FC = () => {
-    const [operations, setOperations] = useState<Operation[]>(() => {
-        const saved = localStorage.getItem('geomato_operations');
-        return saved ? JSON.parse(saved) : [];
-    });
+  const [operations, setOperations] = useState<Operation[]>([]);
+  const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        localStorage.setItem('geomato_operations', JSON.stringify(operations));
-    }, [operations]);
-
-    const addOperation = (newOp: Operation) => {
-        setOperations([newOp, ...operations]);
+  useEffect(() => {
+    const fetchOperations = async () => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/operations`);
+        if (!response.ok) throw new Error('Failed to fetch operations');
+        const data = await response.json();
+        setOperations(data);
+      } catch (error) {
+        console.error('Error fetching operations:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const addMaterialToOp = (opId: number, material: Material) => {
-        setOperations(operations.map(op => {
-            if (op.id === opId) {
-                return { ...op, materials: [...op.materials, material] };
-            }
-            return op;
-        }));
-    };
+    fetchOperations();
+  }, []);
 
-    const deleteMaterial = (opId: number, materialId: number) => {
-        setOperations(operations.map(op => {
-            if (op.id === opId) {
-                return { ...op, materials: op.materials.filter(m => m.id !== materialId) };
-            }
-            return op;
-        }));
-    };
+  const addOperation = async (opData: Omit<Operation, 'id' | 'materials'>) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/operations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(opData),
+      });
+      if (!response.ok) throw new Error('Failed to create operation');
+      const newOp = await response.json();
+      setOperations([newOp, ...operations]);
+    } catch (error) {
+      console.error('Error adding operation:', error);
+    }
+  };
 
-    const deleteOperation = (opId: number) => {
-        if (window.confirm('Tem certeza que deseja excluir esta operação?')) {
-            setOperations(operations.filter(op => op.id !== opId));
+  const addMaterialToOp = async (opId: number, material: Omit<Material, 'id'>) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/operations/${opId}/materials`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(material),
+      });
+      if (!response.ok) throw new Error('Failed to add material');
+      const newMaterial = await response.json();
+
+      setOperations(operations.map(op => {
+        if (op.id === opId) {
+          return { ...op, materials: [...op.materials, newMaterial] };
         }
-    };
+        return op;
+      }));
+    } catch (error) {
+      console.error('Error adding material:', error);
+    }
+  };
 
-    const handleExport = () => {
-        exportToExcel(operations);
-    };
+  const deleteMaterial = async (opId: number, materialId: number) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/operations/${opId}/materials/${materialId}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) throw new Error('Failed to delete material');
 
-    return (
-        <AppContainer>
-            <Content>
-                <Header>
-                    <Logo>
-                        <Ship size={32} color="#2b6cb0" />
-                        <h1>GeoMato Ops</h1>
-                    </Logo>
-                    <ExportButton
-                        onClick={handleExport}
-                        disabled={operations.length === 0}
-                    >
-                        <Download size={18} /> Exportar Excel (.xls)
-                    </ExportButton>
-                </Header>
+      setOperations(operations.map(op => {
+        if (op.id === opId) {
+          return { ...op, materials: op.materials.filter(m => m.id !== materialId) };
+        }
+        return op;
+      }));
+    } catch (error) {
+      console.error('Error deleting material:', error);
+    }
+  };
 
-                <OperationForm onAddOperation={addOperation} />
+  const deleteOperation = async (opId: number) => {
+    if (window.confirm('Tem certeza que deseja excluir esta operação?')) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/operations/${opId}`, {
+          method: 'DELETE',
+        });
+        if (!response.ok) throw new Error('Failed to delete operation');
+        setOperations(operations.filter(op => op.id !== opId));
+      } catch (error) {
+        console.error('Error deleting operation:', error);
+      }
+    }
+  };
 
-                <SectionTitle>Plano de Operações</SectionTitle>
-                <OperationList
-                    operations={operations}
-                    onAddMaterialToOp={addMaterialToOp}
-                    onDeleteMaterial={deleteMaterial}
-                    onDeleteOperation={deleteOperation}
-                />
-            </Content>
-        </AppContainer>
-    );
+  const handleExport = () => {
+    exportToExcel(operations);
+  };
+
+  return (
+    <AppContainer>
+      <Content>
+        <Header>
+          <Logo>
+            <Ship size={32} color="#2b6cb0" />
+            <h1>GeoMato Ops</h1>
+          </Logo>
+          <ExportButton
+            onClick={handleExport}
+            disabled={operations.length === 0}
+          >
+            <Download size={18} /> Exportar Excel (.xls)
+          </ExportButton>
+        </Header>
+
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '40px' }}>Carregando...</div>
+        ) : (
+          <>
+            <OperationForm onAddOperation={addOperation} />
+
+            <SectionTitle>Plano de Operações</SectionTitle>
+            <OperationList
+              operations={operations}
+              onAddMaterialToOp={addMaterialToOp}
+              onDeleteMaterial={deleteMaterial}
+              onDeleteOperation={deleteOperation}
+            />
+          </>
+        )}
+      </Content>
+    </AppContainer>
+  );
 }
 
 export default App;

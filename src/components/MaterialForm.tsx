@@ -127,10 +127,7 @@ const MaterialForm: React.FC<MaterialFormProps> = ({ onAddMaterial, onCancel }) 
         e.preventDefault();
         if (!formData.material || !formData.quantidade) return;
 
-        onAddMaterial({
-            ...formData,
-            id: Date.now()
-        } as Material);
+        onAddMaterial(formData as any);
 
         setFormData({
             material: '',
